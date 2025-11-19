@@ -1,12 +1,35 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import Hero from "@/components/Hero";
+import InputForm from "@/components/InputForm";
+import Results from "@/components/Results";
+
+interface FormData {
+  location: string;
+  roofArea: string;
+  soilType: string;
+  slope: string;
+}
 
 const Index = () => {
+  const [formData, setFormData] = useState<FormData | null>(null);
+
+  const handleFormSubmit = (data: FormData) => {
+    setFormData(data);
+    // Scroll to results
+    setTimeout(() => {
+      document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      <Hero />
+      <InputForm onSubmit={handleFormSubmit} />
+      {formData && (
+        <div id="results">
+          <Results data={formData} />
+        </div>
+      )}
     </div>
   );
 };
