@@ -1,0 +1,4 @@
+project_id = "rnzowsdzzozmrclvbpum"
+
+[functions.predict-harvesting]
+verify_jwt = false
