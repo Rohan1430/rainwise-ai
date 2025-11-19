@@ -1,6 +1,19 @@
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Droplets, TrendingUp, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Droplets, TrendingUp, CheckCircle2, AlertTriangle, IndianRupee, Clock } from "lucide-react";
+
+interface PredictionData {
+  annualHarvestPotential: number;
+  monthlyAverage: number;
+  rechargeEfficiency: number;
+  recommendedStructure: string;
+  structureDescription: string;
+  benefits: string[];
+  implementationNotes: string[];
+  estimatedCost?: string;
+  paybackPeriod?: string;
+  environmentalImpact?: string;
+}
 
 interface ResultsProps {
   data: {
@@ -9,21 +22,34 @@ interface ResultsProps {
     soilType: string;
     slope: string;
   };
+  prediction: PredictionData | null;
+  isLoading: boolean;
 }
 
-const Results = ({ data }: ResultsProps) => {
-  // Mock AI predictions (in production, this would come from your AI model)
-  const harvestPotential = Math.floor(parseFloat(data.roofArea) * 0.8 * 12); // Rough estimate
-  const efficiency = data.soilType === 'sandy' ? 85 : data.soilType === 'clay' ? 65 : 75;
-  
-  const getRecommendedStructure = () => {
-    if (data.soilType === 'sandy') return 'Percolation Pit';
-    if (data.soilType === 'clay') return 'Storage Tank with Filtration';
-    if (data.slope.startsWith('0-5')) return 'Recharge Well';
-    return 'Recharge Trench';
-  };
+const Results = ({ data, prediction, isLoading }: ResultsProps) => {
+  if (isLoading) {
+    return (
+      <section className="py-20 px-4 bg-muted/30">
+        <div className="container mx-auto max-w-6xl text-center">
+          <div className="animate-pulse">
+            <h2 className="text-4xl font-bold text-foreground mb-4">
+              Analyzing Your Data...
+            </h2>
+            <p className="text-lg text-muted-foreground mb-8">
+              Our AI is calculating optimal water harvesting potential for {data.location}
+            </p>
+            <div className="flex justify-center">
+              <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
-  const recommendedStructure = getRecommendedStructure();
+  if (!prediction) {
+    return null;
+  }
 
   return (
     <section className="py-20 px-4 bg-muted/30">
@@ -54,10 +80,10 @@ const Results = ({ data }: ResultsProps) => {
               </div>
             </div>
             <div className="text-4xl font-bold text-primary mb-2">
-              {harvestPotential.toLocaleString()} L
+              {prediction.annualHarvestPotential.toLocaleString()} L
             </div>
             <div className="text-sm text-muted-foreground">
-              ~{Math.floor(harvestPotential / 12).toLocaleString()} liters per month
+              ~{prediction.monthlyAverage.toLocaleString()} liters per month
             </div>
           </Card>
 
@@ -78,9 +104,9 @@ const Results = ({ data }: ResultsProps) => {
             </div>
             <div className="mb-3">
               <div className="text-4xl font-bold text-secondary mb-2">
-                {efficiency}%
+                {prediction.rechargeEfficiency}%
               </div>
-              <Progress value={efficiency} className="h-3" />
+              <Progress value={prediction.rechargeEfficiency} className="h-3" />
             </div>
             <div className="text-sm text-muted-foreground">
               {data.soilType.charAt(0).toUpperCase() + data.soilType.slice(1)} soil type
@@ -97,50 +123,76 @@ const Results = ({ data }: ResultsProps) => {
 
           <div className="bg-gradient-primary rounded-xl p-6 mb-6">
             <div className="text-2xl font-bold text-white mb-2">
-              {recommendedStructure}
+              {prediction.recommendedStructure}
             </div>
             <p className="text-white/90">
-              Optimal for your soil type and terrain slope
+              {prediction.structureDescription}
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-2 gap-6 mb-6">
             <div className="space-y-3">
               <h4 className="font-semibold text-foreground">Key Benefits:</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-secondary mt-0.5 flex-shrink-0" />
-                  <span>Maximizes groundwater recharge for your soil conditions</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-secondary mt-0.5 flex-shrink-0" />
-                  <span>Reduces surface runoff and erosion</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-secondary mt-0.5 flex-shrink-0" />
-                  <span>Cost-effective implementation and maintenance</span>
-                </li>
+                {prediction.benefits.map((benefit, index) => (
+                  <li key={index} className="flex items-start gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-secondary mt-0.5 flex-shrink-0" />
+                    <span>{benefit}</span>
+                  </li>
+                ))}
               </ul>
             </div>
 
             <div className="space-y-3">
               <h4 className="font-semibold text-foreground">Implementation Notes:</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li className="flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
-                  <span>Regular maintenance required for optimal performance</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
-                  <span>Install pre-filtration to prevent clogging</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
-                  <span>Monitor water quality periodically</span>
-                </li>
+                {prediction.implementationNotes.map((note, index) => (
+                  <li key={index} className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
+                    <span>{note}</span>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
+
+          {/* Additional insights */}
+          {(prediction.estimatedCost || prediction.paybackPeriod || prediction.environmentalImpact) && (
+            <div className="grid md:grid-cols-3 gap-4 pt-6 border-t border-border">
+              {prediction.estimatedCost && (
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <IndianRupee className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground mb-1">Estimated Cost</div>
+                    <div className="font-semibold text-foreground">{prediction.estimatedCost}</div>
+                  </div>
+                </div>
+              )}
+              
+              {prediction.paybackPeriod && (
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-secondary/10">
+                    <Clock className="w-5 h-5 text-secondary" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground mb-1">Payback Period</div>
+                    <div className="font-semibold text-foreground">{prediction.paybackPeriod}</div>
+                  </div>
+                </div>
+              )}
+
+              {prediction.environmentalImpact && (
+                <div className="md:col-span-3">
+                  <div className="p-4 rounded-lg bg-accent/10">
+                    <h4 className="font-semibold text-foreground mb-2">Environmental Impact</h4>
+                    <p className="text-sm text-muted-foreground">{prediction.environmentalImpact}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </Card>
       </div>
     </section>
