@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import Hero from "@/components/Hero";
 import InputForm from "@/components/InputForm";
 import Results from "@/components/Results";
+import Chatbot from "@/components/Chatbot";
 
 interface FormData {
   location: string;
@@ -96,6 +97,7 @@ const Index = () => {
           <Results data={formData} prediction={prediction} isLoading={isLoading} />
         </div>
       )}
+      <Chatbot />
     </div>
   );
 };
