@@ -14,7 +14,93 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      predictions: {
+        Row: {
+          annual_harvest_potential: number | null
+          benefits: Json | null
+          created_at: string | null
+          environmental_impact: string | null
+          estimated_cost: string | null
+          id: string
+          implementation_notes: Json | null
+          location: string
+          monthly_average: number | null
+          payback_period: string | null
+          recharge_efficiency: number | null
+          recommended_structure: string | null
+          roof_area: number
+          slope: string
+          soil_type: string
+          structure_description: string | null
+          user_id: string
+        }
+        Insert: {
+          annual_harvest_potential?: number | null
+          benefits?: Json | null
+          created_at?: string | null
+          environmental_impact?: string | null
+          estimated_cost?: string | null
+          id?: string
+          implementation_notes?: Json | null
+          location: string
+          monthly_average?: number | null
+          payback_period?: string | null
+          recharge_efficiency?: number | null
+          recommended_structure?: string | null
+          roof_area: number
+          slope: string
+          soil_type: string
+          structure_description?: string | null
+          user_id: string
+        }
+        Update: {
+          annual_harvest_potential?: number | null
+          benefits?: Json | null
+          created_at?: string | null
+          environmental_impact?: string | null
+          estimated_cost?: string | null
+          id?: string
+          implementation_notes?: Json | null
+          location?: string
+          monthly_average?: number | null
+          payback_period?: string | null
+          recharge_efficiency?: number | null
+          recommended_structure?: string | null
+          roof_area?: number
+          slope?: string
+          soil_type?: string
+          structure_description?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
