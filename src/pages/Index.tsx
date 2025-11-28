@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { LogOut, History } from "lucide-react";
+import { LogOut, History, User } from "lucide-react";
 import Hero from "@/components/Hero";
 import InputForm from "@/components/InputForm";
 import Results from "@/components/Results";
@@ -162,6 +162,10 @@ const Index = () => {
         <Button variant="outline" onClick={() => navigate("/history")}>
           <History className="w-4 h-4 mr-2" />
           History
+        </Button>
+        <Button variant="outline" onClick={() => navigate("/profile")}>
+          <User className="w-4 h-4 mr-2" />
+          Profile
         </Button>
         <Button variant="outline" onClick={handleLogout}>
           <LogOut className="w-4 h-4 mr-2" />

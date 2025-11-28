@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Calendar, MapPin, Droplet, Trash2 } from "lucide-react";
+import { Home, Calendar, MapPin, Droplet, Trash2, User, LogOut } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface Prediction {
@@ -89,16 +89,31 @@ const History = () => {
     }
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
+
   if (!isAuthenticated) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 py-8">
+      <div className="absolute top-4 right-4 z-10 flex gap-2">
+        <Button variant="outline" onClick={() => navigate("/")}>
+          <Home className="w-4 h-4 mr-2" />
+          Home
+        </Button>
+        <Button variant="outline" onClick={() => navigate("/profile")}>
+          <User className="w-4 h-4 mr-2" />
+          Profile
+        </Button>
+        <Button variant="outline" onClick={handleLogout}>
+          <LogOut className="w-4 h-4 mr-2" />
+          Logout
+        </Button>
+      </div>
       <div className="container mx-auto px-4">
         <div className="mb-8">
-          <Button variant="ghost" onClick={() => navigate("/")} className="mb-4">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
-          </Button>
           <h1 className="text-4xl font-bold text-foreground mb-2">Prediction History</h1>
           <p className="text-muted-foreground">View and manage your past rainwater harvesting analyses</p>
         </div>
