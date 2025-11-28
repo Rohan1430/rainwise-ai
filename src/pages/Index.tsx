@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
+import { LogOut, History } from "lucide-react";
 import Hero from "@/components/Hero";
 import InputForm from "@/components/InputForm";
 import Results from "@/components/Results";
@@ -95,6 +95,28 @@ const Index = () => {
       console.log('Prediction received:', result);
       setPrediction(result);
       
+      // Save prediction to database
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("predictions").insert({
+          user_id: user.id,
+          location: data.location,
+          roof_area: parseFloat(data.roofArea),
+          soil_type: data.soilType,
+          slope: data.slope,
+          annual_harvest_potential: result.annualHarvestPotential,
+          monthly_average: result.monthlyAverage,
+          recharge_efficiency: result.rechargeEfficiency,
+          recommended_structure: result.recommendedStructure,
+          structure_description: result.structureDescription,
+          benefits: result.benefits,
+          implementation_notes: result.implementationNotes,
+          estimated_cost: result.estimatedCost,
+          payback_period: result.paybackPeriod,
+          environmental_impact: result.environmentalImpact,
+        });
+      }
+      
       toast({
         title: "Analysis Complete",
         description: "AI has successfully analyzed your building data!",
@@ -136,7 +158,11 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="absolute top-4 right-4 z-10">
+      <div className="absolute top-4 right-4 z-10 flex gap-2">
+        <Button variant="outline" onClick={() => navigate("/history")}>
+          <History className="w-4 h-4 mr-2" />
+          History
+        </Button>
         <Button variant="outline" onClick={handleLogout}>
           <LogOut className="w-4 h-4 mr-2" />
           Logout
