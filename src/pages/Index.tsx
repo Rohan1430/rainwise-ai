@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
 import Hero from "@/components/Hero";
 import InputForm from "@/components/InputForm";
 import Results from "@/components/Results";
@@ -28,9 +31,35 @@ interface PredictionData {
 
 const Index = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<FormData | null>(null);
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check authentication status
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        navigate("/auth");
+      } else {
+        setIsAuthenticated(true);
+      }
+      setLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate("/auth");
+      } else {
+        setIsAuthenticated(true);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   const handleFormSubmit = async (data: FormData) => {
     setFormData(data);
@@ -88,8 +117,31 @@ const Index = () => {
     }
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-background">
+      <div className="absolute top-4 right-4 z-10">
+        <Button variant="outline" onClick={handleLogout}>
+          <LogOut className="w-4 h-4 mr-2" />
+          Logout
+        </Button>
+      </div>
       <Hero />
       <InputForm onSubmit={handleFormSubmit} />
       {(formData && (isLoading || prediction)) && (
