@@ -111,13 +111,27 @@ const Profile = () => {
       </div>
 
       <div className="max-w-2xl mx-auto pt-20">
-        <div className="mb-6 text-center">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Logged in as: {email}
-          </h1>
-          {fullName && (
-            <p className="text-lg text-muted-foreground">{fullName}</p>
-          )}
+        <div className="mb-6">
+          <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-foreground mb-1">
+                    {fullName || email?.split('@')[0] || 'User'}
+                  </h2>
+                  <p className="text-muted-foreground">{email}</p>
+                </div>
+                <div className="text-right">
+                  <div className="inline-flex items-center px-3 py-1 rounded-full bg-primary/20 text-primary text-sm font-medium">
+                    Free Daily Account
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Member since {new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
         
         <Card>
