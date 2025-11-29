@@ -12,6 +12,8 @@ const Auth = () => {
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
+  const [countdown, setCountdown] = useState(60);
+  const [canResend, setCanResend] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -32,6 +34,18 @@ const Auth = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  useEffect(() => {
+    let timer: number;
+    if (otpSent && countdown > 0) {
+      timer = window.setTimeout(() => {
+        setCountdown(countdown - 1);
+      }, 1000);
+    } else if (countdown === 0) {
+      setCanResend(true);
+    }
+    return () => clearTimeout(timer);
+  }, [otpSent, countdown]);
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +72,8 @@ const Auth = () => {
       if (error) throw error;
 
       setOtpSent(true);
+      setCountdown(60);
+      setCanResend(false);
       toast({
         title: "OTP sent!",
         description: "Check your email for the verification code",
@@ -169,18 +185,31 @@ const Auth = () => {
                 {loading ? "Verifying..." : "Verify OTP"}
               </Button>
 
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full"
-                onClick={() => {
-                  setOtpSent(false);
-                  setOtp("");
-                }}
-                disabled={loading}
-              >
-                Use different email
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="flex-1"
+                  onClick={() => {
+                    setOtpSent(false);
+                    setOtp("");
+                    setCountdown(60);
+                    setCanResend(false);
+                  }}
+                  disabled={loading}
+                >
+                  Use different email
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={handleSendOtp}
+                  disabled={loading || !canResend}
+                >
+                  {canResend ? "Resend OTP" : `Resend in ${countdown}s`}
+                </Button>
+              </div>
             </form>
           )}
         </div>
