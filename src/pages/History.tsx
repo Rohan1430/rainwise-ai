@@ -115,7 +115,9 @@ const History = () => {
       <div className="container mx-auto px-4">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-foreground mb-2">Prediction History</h1>
-          <p className="text-muted-foreground">View and manage your past rainwater harvesting analyses</p>
+          <p className="text-muted-foreground">
+            View and manage your past searches - Areas you've analyzed for rainwater harvesting
+          </p>
         </div>
 
         {loading ? (
@@ -150,13 +152,13 @@ const History = () => {
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <MapPin className="w-5 h-5 text-primary" />
-                        {prediction.location}
+                      <CardTitle className="flex items-center gap-2 text-xl">
+                        <MapPin className="w-6 h-6 text-primary" />
+                        Area: {prediction.location}
                       </CardTitle>
                       <CardDescription className="flex items-center gap-2 mt-2">
                         <Calendar className="w-4 h-4" />
-                        {new Date(prediction.created_at).toLocaleDateString("en-US", {
+                        Searched on: {new Date(prediction.created_at).toLocaleDateString("en-US", {
                           year: "numeric",
                           month: "long",
                           day: "numeric",
