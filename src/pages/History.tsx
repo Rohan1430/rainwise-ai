@@ -4,8 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Home, Calendar, MapPin, Droplet, Trash2, User, LogOut } from "lucide-react";
+import { Home, Calendar, MapPin, Droplet, Trash2, User, LogOut, MessageCircle, Building2, Mountain, Layers } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Prediction {
   id: string;
@@ -19,8 +21,16 @@ interface Prediction {
   created_at: string;
 }
 
+interface ChatMessage {
+  id: string;
+  message: string;
+  role: string;
+  created_at: string;
+}
+
 const History = () => {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
@@ -50,18 +60,26 @@ const History = () => {
 
   const fetchPredictions = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: predictionsData, error: predictionsError } = await supabase
         .from("predictions")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (predictionsError) throw predictionsError;
 
-      setPredictions(data || []);
+      const { data: messagesData, error: messagesError } = await supabase
+        .from("chat_messages")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (messagesError) throw messagesError;
+
+      setPredictions(predictionsData || []);
+      setChatMessages(messagesData || []);
     } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to load prediction history",
+        description: "Failed to load history",
         variant: "destructive",
       });
     } finally {
@@ -114,12 +132,25 @@ const History = () => {
       </div>
       <div className="container mx-auto px-4">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Prediction History</h1>
+          <h1 className="text-4xl font-bold text-foreground mb-2">History</h1>
           <p className="text-muted-foreground">
-            View and manage your past searches - Areas you've analyzed for rainwater harvesting
+            View your rainwater harvesting analyses and chatbot conversations
           </p>
         </div>
 
+        <Tabs defaultValue="predictions" className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
+            <TabsTrigger value="predictions">
+              <Droplet className="w-4 h-4 mr-2" />
+              Predictions
+            </TabsTrigger>
+            <TabsTrigger value="chatbot">
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Chatbot
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="predictions">
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
@@ -176,24 +207,48 @@ const History = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Roof Area</p>
-                      <p className="font-semibold">{prediction.roof_area} sq. meters</p>
+                  <div className="mb-4 p-3 bg-muted/50 rounded-lg">
+                    <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <Layers className="w-4 h-4" />
+                      Input Data You Entered:
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Roof:</span>
+                        <span className="font-medium">{prediction.roof_area} m²</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Layers className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Soil:</span>
+                        <span className="font-medium capitalize">{prediction.soil_type}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Mountain className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Slope:</span>
+                        <span className="font-medium capitalize">{prediction.slope}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Location:</span>
+                        <span className="font-medium">{prediction.location}</span>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Soil Type</p>
-                      <p className="font-semibold capitalize">{prediction.soil_type}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Annual Potential</p>
-                      <p className="font-semibold text-primary">
-                        {prediction.annual_harvest_potential?.toLocaleString()} liters
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div className="p-3 bg-primary/5 rounded-lg">
+                      <p className="text-sm text-muted-foreground mb-1">Water Harvesting Potential</p>
+                      <p className="text-2xl font-bold text-primary">
+                        {prediction.annual_harvest_potential?.toLocaleString()} L
                       </p>
+                      <p className="text-xs text-muted-foreground mt-1">per year</p>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Recommended Structure</p>
-                      <p className="font-semibold">{prediction.recommended_structure}</p>
+                    <div className="p-3 bg-green-500/5 rounded-lg border border-green-500/20">
+                      <p className="text-sm text-muted-foreground mb-1">Recommended System</p>
+                      <p className="font-semibold text-green-700 dark:text-green-400">
+                        {prediction.recommended_structure}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -201,6 +256,77 @@ const History = () => {
             ))}
           </div>
         )}
+          </TabsContent>
+
+          <TabsContent value="chatbot">
+            {loading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i}>
+                    <CardContent className="p-4">
+                      <Skeleton className="h-20 w-full" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : chatMessages.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <MessageCircle className="w-16 h-16 text-muted-foreground mb-4" />
+                  <h3 className="text-xl font-semibold mb-2">No chatbot conversations yet</h3>
+                  <p className="text-muted-foreground text-center mb-6">
+                    Start chatting with the AI assistant to get help with rainwater harvesting
+                  </p>
+                  <Button onClick={() => navigate("/")}>Start Chatting</Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Chatbot Conversation History</CardTitle>
+                  <CardDescription>
+                    Questions you asked and responses from the AI assistant
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[600px] pr-4">
+                    <div className="space-y-4">
+                      {chatMessages.map((msg) => (
+                        <div
+                          key={msg.id}
+                          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div
+                            className={`max-w-[80%] rounded-lg p-4 ${
+                              msg.role === 'user'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted border'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-xs font-semibold uppercase">
+                                {msg.role === 'user' ? 'You' : 'AI Assistant'}
+                              </span>
+                              <span className="text-xs opacity-70">
+                                {new Date(msg.created_at).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                            <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

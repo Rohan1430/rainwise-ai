@@ -41,6 +41,16 @@ const Chatbot = () => {
     setIsLoading(true);
 
     try {
+      // Save user message to database
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('chat_messages').insert({
+          user_id: user.id,
+          message: userMessage.content,
+          role: 'user'
+        });
+      }
+
       const { data, error } = await supabase.functions.invoke('chatbot', {
         body: { messages: [...messages, userMessage] }
       });
@@ -66,6 +76,15 @@ const Chatbot = () => {
 
       const assistantMessage: Message = { role: 'assistant', content: data.message };
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Save assistant message to database
+      if (user) {
+        await supabase.from('chat_messages').insert({
+          user_id: user.id,
+          message: assistantMessage.content,
+          role: 'assistant'
+        });
+      }
 
     } catch (error: any) {
       console.error('Unexpected error:', error);
