@@ -111,6 +111,15 @@ const Profile = () => {
       </div>
 
       <div className="max-w-2xl mx-auto pt-20">
+        <div className="mb-6 text-center">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            Logged in as: {email}
+          </h1>
+          {fullName && (
+            <p className="text-lg text-muted-foreground">{fullName}</p>
+          )}
+        </div>
+        
         <Card>
           <CardHeader>
             <CardTitle>Profile Settings</CardTitle>
