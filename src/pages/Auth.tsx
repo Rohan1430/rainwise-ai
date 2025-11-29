@@ -100,13 +100,15 @@ const Auth = () => {
         title: "Success!",
         description: "You've been logged in successfully",
       });
+      
+      // Redirect to home page after successful login
+      navigate("/");
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message || "Invalid OTP",
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };
