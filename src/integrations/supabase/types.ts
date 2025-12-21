@@ -38,6 +38,60 @@ export type Database = {
         }
         Relationships: []
       }
+      otp_codes: {
+        Row: {
+          attempts: number
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          otp_hash: string
+          used: boolean
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          otp_hash: string
+          used?: boolean
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          otp_hash?: string
+          used?: boolean
+        }
+        Relationships: []
+      }
+      otp_rate_limits: {
+        Row: {
+          email: string
+          first_request_at: string
+          id: string
+          last_request_at: string
+          request_count: number
+        }
+        Insert: {
+          email: string
+          first_request_at?: string
+          id?: string
+          last_request_at?: string
+          request_count?: number
+        }
+        Update: {
+          email?: string
+          first_request_at?: string
+          id?: string
+          last_request_at?: string
+          request_count?: number
+        }
+        Relationships: []
+      }
       predictions: {
         Row: {
           annual_harvest_potential: number | null
@@ -130,7 +184,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_expired_otps: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
