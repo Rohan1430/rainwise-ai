@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,15 +15,29 @@ interface FormData {
 
 interface InputFormProps {
   onSubmit: (data: FormData) => void;
+  initialData?: Partial<FormData>;
 }
 
-const InputForm = ({ onSubmit }: InputFormProps) => {
+const InputForm = ({ onSubmit, initialData }: InputFormProps) => {
   const [formData, setFormData] = useState<FormData>({
-    location: "",
-    roofArea: "",
-    soilType: "",
-    slope: "",
+    location: initialData?.location || "",
+    roofArea: initialData?.roofArea || "",
+    soilType: initialData?.soilType || "",
+    slope: initialData?.slope || "",
   });
+
+  // Update form when initialData changes (e.g., profile loads)
+  useEffect(() => {
+    if (initialData) {
+      setFormData((prev) => ({
+        ...prev,
+        location: initialData.location || prev.location,
+        roofArea: initialData.roofArea || prev.roofArea,
+        soilType: initialData.soilType || prev.soilType,
+        slope: initialData.slope || prev.slope,
+      }));
+    }
+  }, [initialData]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
