@@ -157,7 +157,11 @@ export type Database = {
           created_at: string | null
           email: string | null
           full_name: string | null
+          harvesting_method: string | null
           id: string
+          location: string | null
+          roof_area: number | null
+          tank_capacity: number | null
           updated_at: string | null
           user_id: string
         }
@@ -165,7 +169,11 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           full_name?: string | null
+          harvesting_method?: string | null
           id?: string
+          location?: string | null
+          roof_area?: number | null
+          tank_capacity?: number | null
           updated_at?: string | null
           user_id: string
         }
@@ -173,7 +181,11 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           full_name?: string | null
+          harvesting_method?: string | null
           id?: string
+          location?: string | null
+          roof_area?: number | null
+          tank_capacity?: number | null
           updated_at?: string | null
           user_id?: string
         }

@@ -1,7 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ProfileSummaryCard } from "@/components/ProfileSummaryCard";
 import { Button } from "@/components/ui/button";
 import { LogOut, History, User } from "lucide-react";
 import Hero from "@/components/Hero";
@@ -29,37 +33,23 @@ interface PredictionData {
   environmentalImpact?: string;
 }
 
-const Index = () => {
+function DashboardContent() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const { profile } = useProfile();
   const [formData, setFormData] = useState<FormData | null>(null);
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Check authentication status
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        navigate("/auth");
-      } else {
-        setIsAuthenticated(true);
-      }
-      setLoading(false);
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session) {
-        navigate("/auth");
-      } else {
-        setIsAuthenticated(true);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+  // Pre-fill form data from profile if available
+  const getInitialFormData = (): Partial<FormData> => {
+    if (!profile) return {};
+    return {
+      location: profile.location || "",
+      roofArea: profile.roof_area?.toString() || "",
+    };
+  };
 
   const handleFormSubmit = async (data: FormData) => {
     setFormData(data);
@@ -67,23 +57,27 @@ const Index = () => {
     setPrediction(null);
 
     try {
-      console.log('Calling AI prediction function...');
-      const { data: result, error } = await supabase.functions.invoke('predict-harvesting', {
-        body: data
-      });
+      console.log("Calling AI prediction function...");
+      const { data: result, error } = await supabase.functions.invoke(
+        "predict-harvesting",
+        {
+          body: data,
+        }
+      );
 
       if (error) {
-        console.error('Prediction error:', error);
+        console.error("Prediction error:", error);
         toast({
           title: "Prediction Failed",
-          description: error.message || "Failed to generate AI predictions. Please try again.",
+          description:
+            error.message || "Failed to generate AI predictions. Please try again.",
           variant: "destructive",
         });
         return;
       }
 
       if (result.error) {
-        console.error('AI error:', result.error);
+        console.error("AI error:", result.error);
         toast({
           title: "AI Error",
           description: result.error,
@@ -92,11 +86,10 @@ const Index = () => {
         return;
       }
 
-      console.log('Prediction received:', result);
+      console.log("Prediction received:", result);
       setPrediction(result);
-      
+
       // Save prediction to database
-      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         await supabase.from("predictions").insert({
           user_id: user.id,
@@ -116,7 +109,7 @@ const Index = () => {
           environmental_impact: result.environmentalImpact,
         });
       }
-      
+
       toast({
         title: "Analysis Complete",
         description: "AI has successfully analyzed your building data!",
@@ -124,11 +117,10 @@ const Index = () => {
 
       // Scroll to results
       setTimeout(() => {
-        document.getElementById('results')?.scrollIntoView({ behavior: 'smooth' });
+        document.getElementById("results")?.scrollIntoView({ behavior: "smooth" });
       }, 100);
-
     } catch (error: any) {
-      console.error('Unexpected error:', error);
+      console.error("Unexpected error:", error);
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
@@ -140,48 +132,64 @@ const Index = () => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOut();
     navigate("/auth");
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return null;
-  }
-
   return (
     <div className="min-h-screen bg-background">
-      <div className="absolute top-4 right-4 z-10 flex gap-2">
-        <Button variant="outline" onClick={() => navigate("/history")}>
-          <History className="w-4 h-4 mr-2" />
-          History
-        </Button>
-        <Button variant="outline" onClick={() => navigate("/profile")}>
-          <User className="w-4 h-4 mr-2" />
-          Profile
-        </Button>
-        <Button variant="outline" onClick={handleLogout}>
-          <LogOut className="w-4 h-4 mr-2" />
-          Logout
-        </Button>
-      </div>
+      {/* Top Navigation */}
+      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xl font-bold text-primary">RainIQ</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={() => navigate("/history")}>
+              <History className="w-4 h-4 mr-2" />
+              History
+            </Button>
+            <Button variant="ghost" onClick={() => navigate("/profile")}>
+              <User className="w-4 h-4 mr-2" />
+              Profile
+            </Button>
+            <Button variant="outline" onClick={handleLogout}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero Section */}
       <Hero />
-      <InputForm onSubmit={handleFormSubmit} />
-      {(formData && (isLoading || prediction)) && (
+
+      {/* Profile Summary Card */}
+      <section className="max-w-4xl mx-auto px-4 -mt-8 mb-8 relative z-10">
+        <ProfileSummaryCard profile={profile} />
+      </section>
+
+      {/* Input Form - pass initial data from profile */}
+      <InputForm onSubmit={handleFormSubmit} initialData={getInitialFormData()} />
+
+      {/* Results Section */}
+      {formData && (isLoading || prediction) && (
         <div id="results">
           <Results data={formData} prediction={prediction} isLoading={isLoading} />
         </div>
       )}
+
+      {/* Chatbot */}
       <Chatbot />
     </div>
   );
-};
+}
+
+// Wrap with ProtectedRoute
+const Index = () => (
+  <ProtectedRoute>
+    <DashboardContent />
+  </ProtectedRoute>
+);
 
 export default Index;
