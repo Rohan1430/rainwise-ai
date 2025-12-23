@@ -146,21 +146,24 @@ function DashboardContent() {
   return (
     <div className="min-h-screen bg-background">
       {/* Top Navigation */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b">
+      <header className="sticky top-0 z-50 bg-card/90 backdrop-blur-md border-b border-border shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xl font-bold text-primary">RainIQ</span>
+            <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-sm">R</span>
+            </div>
+            <span className="font-display text-xl font-bold text-foreground">RainIQ</span>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={() => navigate("/history")}>
+            <Button variant="ghost" className="btn-animate" onClick={() => navigate("/history")}>
               <History className="w-4 h-4 mr-2" />
               History
             </Button>
-            <Button variant="ghost" onClick={() => navigate("/profile")}>
+            <Button variant="ghost" className="btn-animate" onClick={() => navigate("/profile")}>
               <User className="w-4 h-4 mr-2" />
               Profile
             </Button>
-            <Button variant="outline" onClick={handleLogout}>
+            <Button variant="outline" className="btn-animate text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30" onClick={handleLogout}>
               <LogOut className="w-4 h-4 mr-2" />
               Logout
             </Button>

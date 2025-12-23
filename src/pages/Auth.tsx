@@ -304,12 +304,12 @@ const Auth = () => {
   // Success animation screen
   if (authSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-green-50 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-page p-4">
         <div className="w-full max-w-md text-center animate-fade-in">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-green-500 rounded-full mb-6 animate-scale-in">
-            <CheckCircle2 className="w-10 h-10 text-white" />
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-secondary rounded-2xl mb-6 shadow-success animate-scale-in">
+            <CheckCircle2 className="w-10 h-10 text-secondary-foreground" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">
+          <h1 className="font-display text-3xl font-bold text-foreground mb-2">
             {mode === "register" ? "Account Created!" : "Welcome Back!"}
           </h1>
           <p className="text-muted-foreground">Redirecting you to the dashboard...</p>
@@ -324,26 +324,26 @@ const Auth = () => {
   // Reset success screen
   if (mode === "reset-success") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-green-50 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-page p-4">
         <div className="w-full max-w-md">
           <div className="text-center mb-8 animate-fade-in">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-full mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-2xl mb-4 shadow-glow">
               <Mail className="w-8 h-8 text-primary-foreground" />
             </div>
-            <h1 className="text-3xl font-bold text-foreground">Check Your Email</h1>
+            <h1 className="font-display text-3xl font-bold text-foreground">Check Your Email</h1>
             <p className="text-muted-foreground mt-2">
-              We've sent a password reset link to <strong>{email}</strong>
+              We've sent a password reset link to <strong className="text-foreground">{email}</strong>
             </p>
           </div>
           
-          <div className="bg-card p-8 rounded-xl shadow-lg border border-border">
+          <div className="bg-card p-8 rounded-2xl shadow-card border border-border">
             <div className="space-y-4 text-center">
               <p className="text-sm text-muted-foreground">
                 The link will expire in 15 minutes. If you don't see the email, check your spam folder.
               </p>
               <Button
                 variant="outline"
-                className="w-full"
+                className="w-full h-11 btn-animate"
                 onClick={() => switchMode("login")}
               >
                 Back to Login
@@ -356,14 +356,18 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-green-50 p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-page p-4">
+      {/* Decorative elements */}
+      <div className="fixed top-20 left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="fixed bottom-20 right-10 w-96 h-96 bg-secondary/5 rounded-full blur-3xl pointer-events-none" />
+      
+      <div className="w-full max-w-md relative z-10">
         {/* Header */}
         <div className="text-center mb-8 animate-fade-in">
-          <Link to="/" className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-full mb-4 hover:scale-105 transition-transform">
+          <Link to="/" className="inline-flex items-center justify-center w-16 h-16 bg-gradient-primary rounded-2xl mb-4 shadow-glow hover:scale-105 transition-transform">
             <Droplet className="w-8 h-8 text-primary-foreground" />
           </Link>
-          <h1 className="text-3xl font-bold text-foreground">
+          <h1 className="font-display text-3xl font-bold text-foreground">
             {mode === "login" && "Welcome Back"}
             {mode === "register" && "Create Account"}
             {mode === "forgot-password" && "Reset Password"}
@@ -376,12 +380,12 @@ const Auth = () => {
         </div>
 
         {/* Main Card */}
-        <div className="bg-card p-8 rounded-xl shadow-lg border border-border animate-fade-in">
+        <div className="bg-card p-8 rounded-2xl shadow-card border border-border animate-fade-in stagger-1">
           {mode === "login" && (
             <form onSubmit={handleLogin} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="email" className="flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
+                <Label htmlFor="email" className="flex items-center gap-2 text-sm font-medium">
+                  <Mail className="w-4 h-4 text-muted-foreground" />
                   Email Address
                 </Label>
                 <Input
@@ -392,7 +396,7 @@ const Auth = () => {
                   onChange={(e) => validateEmail(e.target.value)}
                   required
                   disabled={loading}
-                  className={emailError ? "border-destructive" : ""}
+                  className={`h-11 ${emailError ? "border-destructive focus-visible:ring-destructive" : ""}`}
                   autoComplete="email"
                   autoFocus
                 />
@@ -400,8 +404,8 @@ const Auth = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="flex items-center gap-2">
-                  <Lock className="w-4 h-4" />
+                <Label htmlFor="password" className="flex items-center gap-2 text-sm font-medium">
+                  <Lock className="w-4 h-4 text-muted-foreground" />
                   Password
                 </Label>
                 <div className="relative">
@@ -413,12 +417,12 @@ const Auth = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     disabled={loading}
-                    className="pr-10"
+                    className="h-11 pr-10"
                     autoComplete="current-password"
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -429,14 +433,14 @@ const Auth = () => {
               <div className="flex justify-end">
                 <button
                   type="button"
-                  className="text-sm text-primary hover:underline"
+                  className="text-sm text-primary hover:text-primary/80 hover:underline transition-colors"
                   onClick={() => switchMode("forgot-password")}
                 >
                   Forgot password?
                 </button>
               </div>
 
-              <Button type="submit" className="w-full" size="lg" disabled={loading}>
+              <Button type="submit" className="w-full h-11 btn-animate shadow-glow" size="lg" disabled={loading}>
                 {loading ? (
                   <span className="flex items-center gap-2">
                     <span className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
@@ -454,7 +458,7 @@ const Auth = () => {
                 Don't have an account?{" "}
                 <button
                   type="button"
-                  className="text-primary hover:underline font-medium"
+                  className="text-primary hover:text-primary/80 hover:underline font-medium transition-colors"
                   onClick={() => switchMode("register")}
                 >
                   Create one
@@ -466,8 +470,8 @@ const Auth = () => {
           {mode === "register" && (
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="fullName" className="flex items-center gap-2">
-                  <User className="w-4 h-4" />
+                <Label htmlFor="fullName" className="flex items-center gap-2 text-sm font-medium">
+                  <User className="w-4 h-4 text-muted-foreground" />
                   Full Name
                 </Label>
                 <Input
@@ -478,7 +482,7 @@ const Auth = () => {
                   onChange={(e) => validateName(e.target.value)}
                   required
                   disabled={loading}
-                  className={nameError ? "border-destructive" : ""}
+                  className={`h-11 ${nameError ? "border-destructive focus-visible:ring-destructive" : ""}`}
                   autoComplete="name"
                   autoFocus
                 />
@@ -486,8 +490,8 @@ const Auth = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
+                <Label htmlFor="email" className="flex items-center gap-2 text-sm font-medium">
+                  <Mail className="w-4 h-4 text-muted-foreground" />
                   Email Address
                 </Label>
                 <Input
@@ -498,16 +502,16 @@ const Auth = () => {
                   onChange={(e) => validateEmail(e.target.value)}
                   required
                   disabled={loading}
-                  className={emailError ? "border-destructive" : ""}
+                  className={`h-11 ${emailError ? "border-destructive focus-visible:ring-destructive" : ""}`}
                   autoComplete="email"
                 />
                 {emailError && <p className="text-sm text-destructive">{emailError}</p>}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="location" className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  Location <span className="text-muted-foreground text-xs">(optional)</span>
+                <Label htmlFor="location" className="flex items-center gap-2 text-sm font-medium">
+                  <MapPin className="w-4 h-4 text-muted-foreground" />
+                  Location <span className="text-muted-foreground text-xs font-normal">(optional)</span>
                 </Label>
                 <Input
                   id="location"
@@ -516,13 +520,14 @@ const Auth = () => {
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   disabled={loading}
+                  className="h-11"
                   autoComplete="address-level2"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="flex items-center gap-2">
-                  <Lock className="w-4 h-4" />
+                <Label htmlFor="password" className="flex items-center gap-2 text-sm font-medium">
+                  <Lock className="w-4 h-4 text-muted-foreground" />
                   Password
                 </Label>
                 <div className="relative">
@@ -534,12 +539,12 @@ const Auth = () => {
                     onChange={(e) => validatePassword(e.target.value)}
                     required
                     disabled={loading}
-                    className={`pr-10 ${passwordError ? "border-destructive" : ""}`}
+                    className={`h-11 pr-10 ${passwordError ? "border-destructive focus-visible:ring-destructive" : ""}`}
                     autoComplete="new-password"
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -547,15 +552,16 @@ const Auth = () => {
                 </div>
                 {passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
                 {!passwordError && password && (
-                  <p className="text-xs text-muted-foreground">
-                    ✓ 8+ chars, uppercase, lowercase, number, special character
+                  <p className="text-xs text-secondary flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Strong password requirements met
                   </p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="flex items-center gap-2">
-                  <KeyRound className="w-4 h-4" />
+                <Label htmlFor="confirmPassword" className="flex items-center gap-2 text-sm font-medium">
+                  <KeyRound className="w-4 h-4 text-muted-foreground" />
                   Confirm Password
                 </Label>
                 <div className="relative">
@@ -567,12 +573,12 @@ const Auth = () => {
                     onChange={(e) => validateConfirmPassword(e.target.value)}
                     required
                     disabled={loading}
-                    className={`pr-10 ${confirmPasswordError ? "border-destructive" : ""}`}
+                    className={`h-11 pr-10 ${confirmPasswordError ? "border-destructive focus-visible:ring-destructive" : ""}`}
                     autoComplete="new-password"
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
                     {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -581,10 +587,10 @@ const Auth = () => {
                 {confirmPasswordError && <p className="text-sm text-destructive">{confirmPasswordError}</p>}
               </div>
 
-              <Button type="submit" className="w-full" size="lg" disabled={loading}>
+              <Button type="submit" className="w-full h-11 btn-animate bg-secondary hover:bg-secondary/90 shadow-success" size="lg" disabled={loading}>
                 {loading ? (
                   <span className="flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                    <span className="w-4 h-4 border-2 border-secondary-foreground border-t-transparent rounded-full animate-spin" />
                     Creating account...
                   </span>
                 ) : (
@@ -599,7 +605,7 @@ const Auth = () => {
                 Already have an account?{" "}
                 <button
                   type="button"
-                  className="text-primary hover:underline font-medium"
+                  className="text-primary hover:text-primary/80 hover:underline font-medium transition-colors"
                   onClick={() => switchMode("login")}
                 >
                   Sign in
@@ -611,8 +617,8 @@ const Auth = () => {
           {mode === "forgot-password" && (
             <form onSubmit={handleForgotPassword} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="email" className="flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
+                <Label htmlFor="email" className="flex items-center gap-2 text-sm font-medium">
+                  <Mail className="w-4 h-4 text-muted-foreground" />
                   Email Address
                 </Label>
                 <Input
@@ -623,14 +629,14 @@ const Auth = () => {
                   onChange={(e) => validateEmail(e.target.value)}
                   required
                   disabled={loading}
-                  className={emailError ? "border-destructive" : ""}
+                  className={`h-11 ${emailError ? "border-destructive focus-visible:ring-destructive" : ""}`}
                   autoComplete="email"
                   autoFocus
                 />
                 {emailError && <p className="text-sm text-destructive">{emailError}</p>}
               </div>
 
-              <Button type="submit" className="w-full" size="lg" disabled={loading}>
+              <Button type="submit" className="w-full h-11 btn-animate shadow-glow" size="lg" disabled={loading}>
                 {loading ? (
                   <span className="flex items-center gap-2">
                     <span className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
@@ -648,7 +654,7 @@ const Auth = () => {
                 Remember your password?{" "}
                 <button
                   type="button"
-                  className="text-primary hover:underline font-medium"
+                  className="text-primary hover:text-primary/80 hover:underline font-medium transition-colors"
                   onClick={() => switchMode("login")}
                 >
                   Sign in
@@ -659,7 +665,7 @@ const Auth = () => {
         </div>
 
         {/* Footer */}
-        <div className="mt-6 text-center">
+        <div className="mt-6 text-center animate-fade-in stagger-2">
           <p className="text-xs text-muted-foreground">
             By continuing, you agree to RainIQ's Terms of Service and Privacy Policy
           </p>
