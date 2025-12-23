@@ -1,37 +1,43 @@
-import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Droplet, Mail, Shield, ArrowLeft, CheckCircle2 } from "lucide-react";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
+import { Droplet, Mail, Lock, User, MapPin, Eye, EyeOff, CheckCircle2, ArrowRight, KeyRound } from "lucide-react";
 import { z } from "zod";
 
 // Validation schemas
 const emailSchema = z.string().email("Please enter a valid email address").max(255);
-const otpSchema = z.string().length(6, "OTP must be 6 digits").regex(/^\d+$/, "OTP must contain only numbers");
+const passwordSchema = z.string()
+  .min(8, "Password must be at least 8 characters")
+  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+  .regex(/[0-9]/, "Password must contain at least one number")
+  .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character");
+const nameSchema = z.string().min(2, "Name must be at least 2 characters").max(100);
 
-// OTP expiry time in seconds (5 minutes)
-const OTP_EXPIRY_SECONDS = 300;
-// Resend cooldown in seconds
-const RESEND_COOLDOWN_SECONDS = 60;
+type AuthMode = "login" | "register" | "forgot-password" | "reset-success";
 
 const Auth = () => {
+  const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [location, setLocation] = useState("");
   const [loading, setLoading] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [resendCountdown, setResendCountdown] = useState(RESEND_COOLDOWN_SECONDS);
-  const [expiryCountdown, setExpiryCountdown] = useState(OTP_EXPIRY_SECONDS);
-  const [canResend, setCanResend] = useState(false);
-  const [verificationSuccess, setVerificationSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [authSuccess, setAuthSuccess] = useState(false);
+  
+  // Validation errors
   const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
+  const [nameError, setNameError] = useState("");
+  
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -45,6 +51,12 @@ const Auth = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
+        // Track login activity
+        if (event === "SIGNED_IN") {
+          setTimeout(() => {
+            trackActivity("login");
+          }, 0);
+        }
         navigate("/");
       }
     });
@@ -52,52 +64,24 @@ const Auth = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Resend countdown timer
-  useEffect(() => {
-    let timer: number;
-    if (otpSent && resendCountdown > 0) {
-      timer = window.setTimeout(() => {
-        setResendCountdown(resendCountdown - 1);
-      }, 1000);
-    } else if (resendCountdown === 0) {
-      setCanResend(true);
+  // Track user activity
+  const trackActivity = async (activityType: string, metadata: Record<string, unknown> = {}) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("user_activity").insert({
+          user_id: user.id,
+          activity_type: activityType,
+          metadata
+        } as any);
+      }
+    } catch (error) {
+      console.error("Failed to track activity:", error);
     }
-    return () => clearTimeout(timer);
-  }, [otpSent, resendCountdown]);
-
-  // OTP expiry countdown timer
-  useEffect(() => {
-    let timer: number;
-    if (otpSent && expiryCountdown > 0 && !verificationSuccess) {
-      timer = window.setTimeout(() => {
-        setExpiryCountdown(expiryCountdown - 1);
-      }, 1000);
-    } else if (expiryCountdown === 0 && otpSent) {
-      toast({
-        title: "OTP Expired",
-        description: "Your verification code has expired. Please request a new one.",
-        variant: "destructive",
-      });
-    }
-    return () => clearTimeout(timer);
-  }, [otpSent, expiryCountdown, verificationSuccess, toast]);
-
-  // Format time for display
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Mask email for display
-  const maskEmail = (email: string): string => {
-    const [local, domain] = email.split("@");
-    if (local.length <= 2) return email;
-    return `${local.substring(0, 2)}${"*".repeat(Math.min(local.length - 2, 5))}@${domain}`;
-  };
-
-  // Validate email on change
-  const handleEmailChange = useCallback((value: string) => {
+  // Validate email
+  const validateEmail = (value: string) => {
     setEmail(value);
     if (value) {
       const result = emailSchema.safeParse(value);
@@ -105,55 +89,86 @@ const Auth = () => {
     } else {
       setEmailError("");
     }
-  }, []);
+  };
 
-  // Send OTP request
-  const handleSendOtp = async (e?: React.FormEvent) => {
-    e?.preventDefault();
+  // Validate password
+  const validatePassword = (value: string) => {
+    setPassword(value);
+    if (value && mode === "register") {
+      const result = passwordSchema.safeParse(value);
+      setPasswordError(result.success ? "" : result.error.errors[0].message);
+    } else {
+      setPasswordError("");
+    }
+    // Also check confirm password match
+    if (confirmPassword && value !== confirmPassword) {
+      setConfirmPasswordError("Passwords do not match");
+    } else {
+      setConfirmPasswordError("");
+    }
+  };
+
+  // Validate confirm password
+  const validateConfirmPassword = (value: string) => {
+    setConfirmPassword(value);
+    if (value && value !== password) {
+      setConfirmPasswordError("Passwords do not match");
+    } else {
+      setConfirmPasswordError("");
+    }
+  };
+
+  // Validate name
+  const validateName = (value: string) => {
+    setFullName(value);
+    if (value) {
+      const result = nameSchema.safeParse(value);
+      setNameError(result.success ? "" : result.error.errors[0].message);
+    } else {
+      setNameError("");
+    }
+  };
+
+  // Handle Login
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    // Validate email
     const emailResult = emailSchema.safeParse(email);
     if (!emailResult.success) {
       setEmailError(emailResult.error.errors[0].message);
-      toast({
-        title: "Invalid email",
-        description: emailResult.error.errors[0].message,
-        variant: "destructive",
-      });
+      return;
+    }
+
+    if (!password) {
+      setPasswordError("Password is required");
       return;
     }
 
     setLoading(true);
-    setEmailError("");
-
+    
     try {
-      const response = await supabase.functions.invoke("send-otp", {
-        body: { email: email.toLowerCase().trim() },
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.toLowerCase().trim(),
+        password,
       });
 
-      if (response.error) {
-        throw new Error(response.error.message || "Failed to send OTP");
+      if (error) {
+        if (error.message.includes("Invalid login credentials")) {
+          throw new Error("Invalid email or password. Please try again.");
+        }
+        throw error;
       }
 
-      if (response.data?.error) {
-        throw new Error(response.data.error);
-      }
-
-      setOtpSent(true);
-      setResendCountdown(RESEND_COOLDOWN_SECONDS);
-      setExpiryCountdown(OTP_EXPIRY_SECONDS);
-      setCanResend(false);
-      setOtp("");
-      
+      setAuthSuccess(true);
       toast({
-        title: "Verification code sent!",
-        description: "Check your email for the 6-digit code",
+        title: "Welcome back!",
+        description: "Signing you in...",
       });
     } catch (error: any) {
-      console.error("Send OTP error:", error);
+      console.error("Login error:", error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to send verification code",
+        title: "Login Failed",
+        description: error.message || "Invalid credentials",
         variant: "destructive",
       });
     } finally {
@@ -161,119 +176,179 @@ const Auth = () => {
     }
   };
 
-  // Verify OTP
-  const handleVerifyOtp = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-
-    // Validate OTP
-    const otpResult = otpSchema.safeParse(otp);
-    if (!otpResult.success) {
-      toast({
-        title: "Invalid code",
-        description: "Please enter a valid 6-digit code",
-        variant: "destructive",
-      });
+  // Handle Registration
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate all fields
+    const emailResult = emailSchema.safeParse(email);
+    const passwordResult = passwordSchema.safeParse(password);
+    const nameResult = nameSchema.safeParse(fullName);
+    
+    if (!emailResult.success) {
+      setEmailError(emailResult.error.errors[0].message);
+      return;
+    }
+    if (!passwordResult.success) {
+      setPasswordError(passwordResult.error.errors[0].message);
+      return;
+    }
+    if (!nameResult.success) {
+      setNameError(nameResult.error.errors[0].message);
+      return;
+    }
+    if (password !== confirmPassword) {
+      setConfirmPasswordError("Passwords do not match");
       return;
     }
 
     setLoading(true);
-
+    
     try {
-      const response = await supabase.functions.invoke("verify-otp", {
-        body: { 
-          email: email.toLowerCase().trim(),
-          otp: otp 
-        },
-      });
-
-      if (response.error) {
-        throw new Error(response.error.message || "Verification failed");
-      }
-
-      if (response.data?.error) {
-        if (response.data.remainingAttempts !== undefined) {
-          throw new Error(`${response.data.error}. ${response.data.remainingAttempts} attempts remaining.`);
-        }
-        throw new Error(response.data.error);
-      }
-
-      setVerificationSuccess(true);
-      
-      toast({
-        title: "Verification successful!",
-        description: "Signing you in...",
-      });
-
-      // If we got an action link, use it to complete auth
-      if (response.data?.actionLink) {
-        // Extract the token from the action link and verify
-        const url = new URL(response.data.actionLink);
-        const token = url.searchParams.get("token");
-        const type = url.searchParams.get("type") as "magiclink";
-        
-        if (token && type) {
-          const { error: verifyError } = await supabase.auth.verifyOtp({
-            token_hash: token,
-            type: type,
-          });
-          
-          if (verifyError) {
-            // Fallback: use magic link flow
-            const { error: signInError } = await supabase.auth.signInWithOtp({
-              email: email.toLowerCase().trim(),
-              options: {
-                shouldCreateUser: true,
-              }
-            });
-            
-            if (!signInError) {
-              toast({
-                title: "Check your email",
-                description: "Click the link to complete sign in",
-              });
-            }
+      const { data, error } = await supabase.auth.signUp({
+        email: email.toLowerCase().trim(),
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            full_name: fullName.trim(),
+            location: location.trim() || null,
           }
         }
+      });
+
+      if (error) {
+        if (error.message.includes("already registered")) {
+          throw new Error("An account with this email already exists. Please login instead.");
+        }
+        throw error;
       }
 
-      // Navigate after a short delay
-      setTimeout(() => {
-        navigate("/");
-      }, 1500);
-      
-    } catch (error: any) {
-      console.error("Verify OTP error:", error);
+      // Update profile with additional data
+      if (data.user) {
+        await supabase.from("profiles").update({
+          full_name: fullName.trim(),
+          location: location.trim() || null,
+        }).eq("user_id", data.user.id);
+      }
+
+      setAuthSuccess(true);
       toast({
-        title: "Verification failed",
-        description: error.message || "Invalid verification code",
+        title: "Account created!",
+        description: "Welcome to RainIQ",
+      });
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      toast({
+        title: "Registration Failed",
+        description: error.message || "Failed to create account",
         variant: "destructive",
       });
+    } finally {
       setLoading(false);
     }
   };
 
-  // Reset to email input
-  const handleBack = () => {
-    setOtpSent(false);
-    setOtp("");
-    setResendCountdown(RESEND_COOLDOWN_SECONDS);
-    setExpiryCountdown(OTP_EXPIRY_SECONDS);
-    setCanResend(false);
-    setVerificationSuccess(false);
+  // Handle Forgot Password
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const emailResult = emailSchema.safeParse(email);
+    if (!emailResult.success) {
+      setEmailError(emailResult.error.errors[0].message);
+      return;
+    }
+
+    setLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        email.toLowerCase().trim(),
+        {
+          redirectTo: `${window.location.origin}/auth?mode=reset`,
+        }
+      );
+
+      if (error) throw error;
+
+      setMode("reset-success");
+      toast({
+        title: "Reset link sent!",
+        description: "Check your email for the password reset link",
+      });
+    } catch (error: any) {
+      console.error("Password reset error:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send reset link",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Reset form when switching modes
+  const switchMode = (newMode: AuthMode) => {
+    setMode(newMode);
+    setPassword("");
+    setConfirmPassword("");
+    setPasswordError("");
+    setConfirmPasswordError("");
+    setNameError("");
+    if (newMode === "login" || newMode === "register") {
+      setEmailError("");
+    }
   };
 
   // Success animation screen
-  if (verificationSuccess) {
+  if (authSuccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-green-50 p-4">
         <div className="w-full max-w-md text-center animate-fade-in">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-green-500 rounded-full mb-6 animate-scale-in">
             <CheckCircle2 className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Verified!</h1>
-          <p className="text-muted-foreground">Redirecting you to the app...</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            {mode === "register" ? "Account Created!" : "Welcome Back!"}
+          </h1>
+          <p className="text-muted-foreground">Redirecting you to the dashboard...</p>
           <div className="mt-6">
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Reset success screen
+  if (mode === "reset-success") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-green-50 p-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8 animate-fade-in">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-full mb-4">
+              <Mail className="w-8 h-8 text-primary-foreground" />
+            </div>
+            <h1 className="text-3xl font-bold text-foreground">Check Your Email</h1>
+            <p className="text-muted-foreground mt-2">
+              We've sent a password reset link to <strong>{email}</strong>
+            </p>
+          </div>
+          
+          <div className="bg-card p-8 rounded-xl shadow-lg border border-border">
+            <div className="space-y-4 text-center">
+              <p className="text-sm text-muted-foreground">
+                The link will expire in 15 minutes. If you don't see the email, check your spam folder.
+              </p>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => switchMode("login")}
+              >
+                Back to Login
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -285,25 +360,25 @@ const Auth = () => {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8 animate-fade-in">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-full mb-4 animate-scale-in">
+          <Link to="/" className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-full mb-4 hover:scale-105 transition-transform">
             <Droplet className="w-8 h-8 text-primary-foreground" />
-          </div>
+          </Link>
           <h1 className="text-3xl font-bold text-foreground">
-            {otpSent ? "Enter Verification Code" : "Welcome"}
+            {mode === "login" && "Welcome Back"}
+            {mode === "register" && "Create Account"}
+            {mode === "forgot-password" && "Reset Password"}
           </h1>
-          <p className="text-muted-foreground mt-2 transition-all duration-300">
-            {otpSent 
-              ? `Code sent to ${maskEmail(email)}` 
-              : "Sign in with your email to continue"
-            }
+          <p className="text-muted-foreground mt-2">
+            {mode === "login" && "Sign in to your RainIQ account"}
+            {mode === "register" && "Join RainIQ to start harvesting insights"}
+            {mode === "forgot-password" && "Enter your email to receive a reset link"}
           </p>
         </div>
 
         {/* Main Card */}
-        <div className="bg-card p-8 rounded-xl shadow-lg border border-border animate-fade-in transition-all duration-300">
-          {!otpSent ? (
-            // Email Input Form
-            <form onSubmit={handleSendOtp} className="space-y-6 animate-fade-in">
+        <div className="bg-card p-8 rounded-xl shadow-lg border border-border animate-fade-in">
+          {mode === "login" && (
+            <form onSubmit={handleLogin} className="space-y-5">
               <div className="space-y-2">
                 <Label htmlFor="email" className="flex items-center gap-2">
                   <Mail className="w-4 h-4" />
@@ -314,140 +389,280 @@ const Auth = () => {
                   type="email"
                   placeholder="you@example.com"
                   value={email}
-                  onChange={(e) => handleEmailChange(e.target.value)}
+                  onChange={(e) => validateEmail(e.target.value)}
                   required
                   disabled={loading}
-                  className={`transition-all duration-200 focus:scale-[1.01] ${
-                    emailError ? "border-destructive" : ""
-                  }`}
+                  className={emailError ? "border-destructive" : ""}
                   autoComplete="email"
                   autoFocus
                 />
-                {emailError && (
-                  <p className="text-sm text-destructive animate-fade-in">{emailError}</p>
-                )}
+                {emailError && <p className="text-sm text-destructive">{emailError}</p>}
               </div>
 
-              <Button 
-                type="submit" 
-                className="w-full transition-all duration-200 hover:scale-[1.02]" 
-                disabled={loading || !!emailError}
-                size="lg"
-              >
+              <div className="space-y-2">
+                <Label htmlFor="password" className="flex items-center gap-2">
+                  <Lock className="w-4 h-4" />
+                  Password
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={loading}
+                    className="pr-10"
+                    autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  className="text-sm text-primary hover:underline"
+                  onClick={() => switchMode("forgot-password")}
+                >
+                  Forgot password?
+                </button>
+              </div>
+
+              <Button type="submit" className="w-full" size="lg" disabled={loading}>
                 {loading ? (
                   <span className="flex items-center gap-2">
                     <span className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                    Sending code...
+                    Signing in...
                   </span>
                 ) : (
                   <span className="flex items-center gap-2">
-                    <Shield className="w-4 h-4" />
-                    Send Verification Code
+                    Sign In
+                    <ArrowRight className="w-4 h-4" />
                   </span>
                 )}
               </Button>
 
-              <p className="text-xs text-muted-foreground text-center">
-                We'll send a 6-digit code to verify your email
+              <p className="text-center text-sm text-muted-foreground">
+                Don't have an account?{" "}
+                <button
+                  type="button"
+                  className="text-primary hover:underline font-medium"
+                  onClick={() => switchMode("register")}
+                >
+                  Create one
+                </button>
               </p>
             </form>
-          ) : (
-            // OTP Input Form
-            <form onSubmit={handleVerifyOtp} className="space-y-6 animate-fade-in">
-              {/* Expiry Timer */}
-              <div className="flex justify-center">
-                <div className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  expiryCountdown <= 60 
-                    ? "bg-destructive/10 text-destructive" 
-                    : "bg-muted text-muted-foreground"
-                }`}>
-                  Code expires in {formatTime(expiryCountdown)}
-                </div>
-              </div>
+          )}
 
-              {/* OTP Input */}
-              <div className="space-y-4">
-                <Label htmlFor="otp" className="text-center block">
-                  Enter 6-digit code
+          {mode === "register" && (
+            <form onSubmit={handleRegister} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="fullName" className="flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Full Name
                 </Label>
-                <div className="flex justify-center">
-                  <InputOTP
-                    maxLength={6}
-                    value={otp}
-                    onChange={(value) => setOtp(value)}
-                    disabled={loading || expiryCountdown === 0}
-                    autoFocus
-                  >
-                    <InputOTPGroup className="gap-2">
-                      {[0, 1, 2, 3, 4, 5].map((index) => (
-                        <InputOTPSlot 
-                          key={index}
-                          index={index} 
-                          className="w-12 h-14 text-xl font-semibold transition-all duration-200 border-2 focus:border-primary focus:ring-2 focus:ring-primary/20" 
-                        />
-                      ))}
-                    </InputOTPGroup>
-                  </InputOTP>
-                </div>
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="John Doe"
+                  value={fullName}
+                  onChange={(e) => validateName(e.target.value)}
+                  required
+                  disabled={loading}
+                  className={nameError ? "border-destructive" : ""}
+                  autoComplete="name"
+                  autoFocus
+                />
+                {nameError && <p className="text-sm text-destructive">{nameError}</p>}
               </div>
 
-              {/* Verify Button */}
-              <Button 
-                type="submit" 
-                className="w-full transition-all duration-200 hover:scale-[1.02]" 
-                disabled={loading || otp.length !== 6 || expiryCountdown === 0}
-                size="lg"
-              >
+              <div className="space-y-2">
+                <Label htmlFor="email" className="flex items-center gap-2">
+                  <Mail className="w-4 h-4" />
+                  Email Address
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => validateEmail(e.target.value)}
+                  required
+                  disabled={loading}
+                  className={emailError ? "border-destructive" : ""}
+                  autoComplete="email"
+                />
+                {emailError && <p className="text-sm text-destructive">{emailError}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="location" className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4" />
+                  Location <span className="text-muted-foreground text-xs">(optional)</span>
+                </Label>
+                <Input
+                  id="location"
+                  type="text"
+                  placeholder="City, State"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  disabled={loading}
+                  autoComplete="address-level2"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password" className="flex items-center gap-2">
+                  <Lock className="w-4 h-4" />
+                  Password
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Create a strong password"
+                    value={password}
+                    onChange={(e) => validatePassword(e.target.value)}
+                    required
+                    disabled={loading}
+                    className={`pr-10 ${passwordError ? "border-destructive" : ""}`}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
+                {!passwordError && password && (
+                  <p className="text-xs text-muted-foreground">
+                    ✓ 8+ chars, uppercase, lowercase, number, special character
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="flex items-center gap-2">
+                  <KeyRound className="w-4 h-4" />
+                  Confirm Password
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Confirm your password"
+                    value={confirmPassword}
+                    onChange={(e) => validateConfirmPassword(e.target.value)}
+                    required
+                    disabled={loading}
+                    className={`pr-10 ${confirmPasswordError ? "border-destructive" : ""}`}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {confirmPasswordError && <p className="text-sm text-destructive">{confirmPasswordError}</p>}
+              </div>
+
+              <Button type="submit" className="w-full" size="lg" disabled={loading}>
                 {loading ? (
                   <span className="flex items-center gap-2">
                     <span className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                    Verifying...
+                    Creating account...
                   </span>
                 ) : (
                   <span className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" />
-                    Verify & Sign In
+                    Create Account
+                    <ArrowRight className="w-4 h-4" />
                   </span>
                 )}
               </Button>
 
-              {/* Action Buttons */}
-              <div className="flex gap-2">
-                <Button
+              <p className="text-center text-sm text-muted-foreground">
+                Already have an account?{" "}
+                <button
                   type="button"
-                  variant="ghost"
-                  className="flex-1 transition-all duration-200"
-                  onClick={handleBack}
+                  className="text-primary hover:underline font-medium"
+                  onClick={() => switchMode("login")}
+                >
+                  Sign in
+                </button>
+              </p>
+            </form>
+          )}
+
+          {mode === "forgot-password" && (
+            <form onSubmit={handleForgotPassword} className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="flex items-center gap-2">
+                  <Mail className="w-4 h-4" />
+                  Email Address
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => validateEmail(e.target.value)}
+                  required
                   disabled={loading}
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Change email
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1 transition-all duration-200"
-                  onClick={() => handleSendOtp()}
-                  disabled={loading || !canResend}
-                >
-                  {canResend ? "Resend Code" : `Resend (${resendCountdown}s)`}
-                </Button>
+                  className={emailError ? "border-destructive" : ""}
+                  autoComplete="email"
+                  autoFocus
+                />
+                {emailError && <p className="text-sm text-destructive">{emailError}</p>}
               </div>
 
-              {/* Security note */}
-              <p className="text-xs text-muted-foreground text-center">
-                Didn't receive the code? Check your spam folder
+              <Button type="submit" className="w-full" size="lg" disabled={loading}>
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                    Sending link...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    Send Reset Link
+                    <Mail className="w-4 h-4" />
+                  </span>
+                )}
+              </Button>
+
+              <p className="text-center text-sm text-muted-foreground">
+                Remember your password?{" "}
+                <button
+                  type="button"
+                  className="text-primary hover:underline font-medium"
+                  onClick={() => switchMode("login")}
+                >
+                  Sign in
+                </button>
               </p>
             </form>
           )}
         </div>
 
-        {/* Security Badge */}
+        {/* Footer */}
         <div className="mt-6 text-center">
-          <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
-            <Shield className="w-3 h-3" />
-            Secure OTP authentication • Codes expire in 5 minutes
-          </div>
+          <p className="text-xs text-muted-foreground">
+            By continuing, you agree to RainIQ's Terms of Service and Privacy Policy
+          </p>
         </div>
       </div>
     </div>

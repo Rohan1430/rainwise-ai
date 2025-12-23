@@ -36,7 +36,7 @@ interface PredictionData {
 function DashboardContent() {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user, signOut, trackActivity } = useAuth();
   const { profile } = useProfile();
   const [formData, setFormData] = useState<FormData | null>(null);
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
@@ -107,6 +107,13 @@ function DashboardContent() {
           estimated_cost: result.estimatedCost,
           payback_period: result.paybackPeriod,
           environmental_impact: result.environmentalImpact,
+        });
+        
+        // Track prediction activity
+        await trackActivity("prediction", {
+          location: data.location,
+          roof_area: parseFloat(data.roofArea),
+          annual_harvest: result.annualHarvestPotential,
         });
       }
 
