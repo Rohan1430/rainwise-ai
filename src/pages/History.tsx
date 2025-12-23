@@ -6,10 +6,17 @@ import { useAuth } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Home, Calendar, MapPin, Droplet, Trash2, User, LogOut, MessageCircle, Building2, Mountain, Layers, ArrowLeft } from "lucide-react";
+import { Home, Calendar, MapPin, Droplet, Trash2, User, LogOut, MessageCircle, Building2, Mountain, Layers, ArrowLeft, Activity, LogIn, LogOutIcon, ClipboardList } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
+interface UserActivity {
+  id: string;
+  activity_type: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
 
 interface Prediction {
   id: string;
@@ -33,6 +40,7 @@ interface ChatMessage {
 function HistoryContent() {
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [userActivity, setUserActivity] = useState<UserActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -44,22 +52,18 @@ function HistoryContent() {
 
   const fetchPredictions = async () => {
     try {
-      const { data: predictionsData, error: predictionsError } = await supabase
-        .from("predictions")
-        .select("*")
-        .order("created_at", { ascending: false });
+      const [predictionsResult, messagesResult, activityResult] = await Promise.all([
+        supabase.from("predictions").select("*").order("created_at", { ascending: false }),
+        supabase.from("chat_messages").select("*").order("created_at", { ascending: false }),
+        supabase.from("user_activity").select("*").order("created_at", { ascending: false }).limit(50),
+      ]);
 
-      if (predictionsError) throw predictionsError;
+      if (predictionsResult.error) throw predictionsResult.error;
+      if (messagesResult.error) throw messagesResult.error;
 
-      const { data: messagesData, error: messagesError } = await supabase
-        .from("chat_messages")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (messagesError) throw messagesError;
-
-      setPredictions(predictionsData || []);
-      setChatMessages(messagesData || []);
+      setPredictions(predictionsResult.data || []);
+      setChatMessages(messagesResult.data || []);
+      setUserActivity((activityResult.data as UserActivity[]) || []);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -131,10 +135,14 @@ function HistoryContent() {
         </div>
 
         <Tabs defaultValue="predictions" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2 mb-6">
+          <TabsList className="grid w-full max-w-lg grid-cols-3 mb-6">
             <TabsTrigger value="predictions">
               <Droplet className="w-4 h-4 mr-2" />
               Predictions
+            </TabsTrigger>
+            <TabsTrigger value="activity">
+              <Activity className="w-4 h-4 mr-2" />
+              Activity
             </TabsTrigger>
             <TabsTrigger value="chatbot">
               <MessageCircle className="w-4 h-4 mr-2" />
@@ -309,6 +317,89 @@ function HistoryContent() {
                               </span>
                             </div>
                             <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="activity">
+            {loading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Card key={i}>
+                    <CardContent className="p-4">
+                      <Skeleton className="h-16 w-full" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : userActivity.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Activity className="w-16 h-16 text-muted-foreground mb-4" />
+                  <h3 className="text-xl font-semibold mb-2">No activity recorded</h3>
+                  <p className="text-muted-foreground text-center">
+                    Your login history and actions will appear here
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Activity Log</CardTitle>
+                  <CardDescription>
+                    Your login history, predictions, and other activities
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[500px] pr-4">
+                    <div className="space-y-3">
+                      {userActivity.map((activity) => (
+                        <div
+                          key={activity.id}
+                          className="flex items-start gap-4 p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                        >
+                          <div className={`p-2 rounded-full ${
+                            activity.activity_type === 'login' ? 'bg-green-100 text-green-600' :
+                            activity.activity_type === 'logout' ? 'bg-orange-100 text-orange-600' :
+                            activity.activity_type === 'prediction' ? 'bg-blue-100 text-blue-600' :
+                            'bg-muted text-muted-foreground'
+                          }`}>
+                            {activity.activity_type === 'login' && <LogIn className="w-4 h-4" />}
+                            {activity.activity_type === 'logout' && <LogOutIcon className="w-4 h-4" />}
+                            {activity.activity_type === 'prediction' && <ClipboardList className="w-4 h-4" />}
+                            {!['login', 'logout', 'prediction'].includes(activity.activity_type) && (
+                              <Activity className="w-4 h-4" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium capitalize">
+                              {activity.activity_type === 'login' && 'Logged in'}
+                              {activity.activity_type === 'logout' && 'Logged out'}
+                              {activity.activity_type === 'prediction' && 'Made a prediction'}
+                              {!['login', 'logout', 'prediction'].includes(activity.activity_type) && activity.activity_type}
+                            </p>
+                            {activity.metadata && Object.keys(activity.metadata).length > 0 && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {activity.activity_type === 'prediction' && activity.metadata.location && (
+                                  <>Location: {String(activity.metadata.location)}</>
+                                )}
+                              </p>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {new Date(activity.created_at).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
                           </div>
                         </div>
                       ))}
