@@ -43,6 +43,16 @@ const Auth = () => {
 
   // Check if user is already logged in
   useEffect(() => {
+    // Check for password recovery event in URL hash - redirect to reset page
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const type = hashParams.get("type");
+    
+    if (type === "recovery") {
+      // Redirect to dedicated reset password page with the hash
+      navigate(`/reset-password${window.location.hash}`);
+      return;
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         navigate("/");
@@ -50,13 +60,18 @@ const Auth = () => {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        // Track login activity
-        if (event === "SIGNED_IN") {
-          setTimeout(() => {
-            trackActivity("login");
-          }, 0);
-        }
+      // CRITICAL: Do NOT auto-login on PASSWORD_RECOVERY event
+      if (event === "PASSWORD_RECOVERY") {
+        // Redirect to reset password page instead of auto-login
+        navigate(`/reset-password${window.location.hash}`);
+        return;
+      }
+      
+      if (session && event === "SIGNED_IN") {
+        // Only track and redirect for actual sign-ins (not recovery)
+        setTimeout(() => {
+          trackActivity("login");
+        }, 0);
         navigate("/");
       }
     });
@@ -265,7 +280,7 @@ const Auth = () => {
       const { error } = await supabase.auth.resetPasswordForEmail(
         email.toLowerCase().trim(),
         {
-          redirectTo: `${window.location.origin}/auth?mode=reset`,
+          redirectTo: `${window.location.origin}/reset-password`,
         }
       );
 
@@ -339,7 +354,7 @@ const Auth = () => {
           <div className="bg-card p-8 rounded-2xl shadow-card border border-border">
             <div className="space-y-4 text-center">
               <p className="text-sm text-muted-foreground">
-                The link will expire in 15 minutes. If you don't see the email, check your spam folder.
+                The link will expire in 10 minutes. If you don't see the email, check your spam folder.
               </p>
               <Button
                 variant="outline"
