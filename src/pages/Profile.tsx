@@ -4,10 +4,11 @@ import { useProfile } from "@/hooks/useProfile";
 import { ProfileForm } from "@/components/ProfileForm";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LogOut, Home, ArrowLeft, Shield } from "lucide-react";
+import { Shield } from "lucide-react";
 
 function ProfileContent() {
   const navigate = useNavigate();
@@ -61,26 +62,8 @@ function ProfileContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50/50 via-background to-green-50/50">
-      {/* Top Navigation */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate("/")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
-          </Button>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => navigate("/")}>
-              <Home className="w-4 h-4 mr-2" />
-              Home
-            </Button>
-            <Button variant="outline" onClick={handleLogout}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
-            </Button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background">
+      <Navbar />
 
       <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
         {/* Profile Header Card */}

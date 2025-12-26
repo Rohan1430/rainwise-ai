@@ -5,9 +5,18 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { Navbar } from "@/components/Navbar";
 import { ProfileSummaryCard } from "@/components/ProfileSummaryCard";
 import { Button } from "@/components/ui/button";
-import { LogOut, History, User } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  CloudRain,
+  Droplets,
+  MessageCircle,
+  History,
+  ArrowRight,
+  TrendingUp,
+} from "lucide-react";
 import Hero from "@/components/Hero";
 import InputForm from "@/components/InputForm";
 import Results from "@/components/Results";
@@ -33,16 +42,46 @@ interface PredictionData {
   environmentalImpact?: string;
 }
 
+const quickActions = [
+  {
+    title: "Check Weather",
+    description: "Get real-time weather and rainfall data",
+    icon: <CloudRain className="w-6 h-6" />,
+    path: "/weather",
+    color: "primary",
+  },
+  {
+    title: "Get Recommendations",
+    description: "AI-powered harvesting analysis",
+    icon: <Droplets className="w-6 h-6" />,
+    path: "/harvesting",
+    color: "secondary",
+  },
+  {
+    title: "Chat with AI",
+    description: "Ask questions about water conservation",
+    icon: <MessageCircle className="w-6 h-6" />,
+    path: "/chatbot",
+    color: "primary",
+  },
+  {
+    title: "View History",
+    description: "See your past predictions and chats",
+    icon: <History className="w-6 h-6" />,
+    path: "/history",
+    color: "secondary",
+  },
+];
+
 function DashboardContent() {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user, signOut, trackActivity } = useAuth();
+  const { user, trackActivity } = useAuth();
   const { profile } = useProfile();
   const [formData, setFormData] = useState<FormData | null>(null);
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Pre-fill form data from profile if available
   const getInitialFormData = (): Partial<FormData> => {
     if (!profile) return {};
     return {
@@ -57,27 +96,21 @@ function DashboardContent() {
     setPrediction(null);
 
     try {
-      console.log("Calling AI prediction function...");
       const { data: result, error } = await supabase.functions.invoke(
         "predict-harvesting",
-        {
-          body: data,
-        }
+        { body: data }
       );
 
       if (error) {
-        console.error("Prediction error:", error);
         toast({
           title: "Prediction Failed",
-          description:
-            error.message || "Failed to generate AI predictions. Please try again.",
+          description: error.message || "Failed to generate AI predictions.",
           variant: "destructive",
         });
         return;
       }
 
       if (result.error) {
-        console.error("AI error:", result.error);
         toast({
           title: "AI Error",
           description: result.error,
@@ -86,10 +119,8 @@ function DashboardContent() {
         return;
       }
 
-      console.log("Prediction received:", result);
       setPrediction(result);
 
-      // Save prediction to database
       if (user) {
         await supabase.from("predictions").insert({
           user_id: user.id,
@@ -108,8 +139,7 @@ function DashboardContent() {
           payback_period: result.paybackPeriod,
           environmental_impact: result.environmentalImpact,
         });
-        
-        // Track prediction activity
+
         await trackActivity("prediction", {
           location: data.location,
           roof_area: parseFloat(data.roofArea),
@@ -122,12 +152,10 @@ function DashboardContent() {
         description: "AI has successfully analyzed your building data!",
       });
 
-      // Scroll to results
       setTimeout(() => {
         document.getElementById("results")?.scrollIntoView({ behavior: "smooth" });
       }, 100);
     } catch (error: any) {
-      console.error("Unexpected error:", error);
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
@@ -138,68 +166,84 @@ function DashboardContent() {
     }
   };
 
-  const handleLogout = async () => {
-    await signOut();
-    navigate("/auth");
-  };
-
   return (
     <div className="min-h-screen bg-background">
-      {/* Top Navigation */}
-      <header className="sticky top-0 z-50 bg-card/90 backdrop-blur-md border-b border-border shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">R</span>
-            </div>
-            <span className="font-display text-xl font-bold text-foreground">RainIQ</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" className="btn-animate" onClick={() => navigate("/history")}>
-              <History className="w-4 h-4 mr-2" />
-              History
-            </Button>
-            <Button variant="ghost" className="btn-animate" onClick={() => navigate("/profile")}>
-              <User className="w-4 h-4 mr-2" />
-              Profile
-            </Button>
-            <Button variant="outline" className="btn-animate text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30" onClick={handleLogout}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
-            </Button>
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
       {/* Hero Section */}
       <Hero />
 
-      {/* Profile Summary Card */}
-      <section className="max-w-4xl mx-auto px-4 -mt-8 mb-8 relative z-10">
+      {/* Profile Summary */}
+      <section className="max-w-7xl mx-auto px-4 -mt-8 mb-8 relative z-10">
         <ProfileSummaryCard profile={profile} />
       </section>
 
-      {/* Input Form - pass initial data from profile */}
-      <InputForm onSubmit={handleFormSubmit} initialData={getInitialFormData()} />
+      {/* Quick Actions */}
+      <section className="max-w-7xl mx-auto px-4 mb-12">
+        <h2 className="text-2xl font-bold text-foreground mb-6">Quick Actions</h2>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {quickActions.map((action, idx) => (
+            <Card
+              key={idx}
+              className="card-hover cursor-pointer group"
+              onClick={() => navigate(action.path)}
+            >
+              <CardContent className="p-6">
+                <div
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${
+                    action.color === "primary"
+                      ? "bg-primary/10 text-primary"
+                      : "bg-secondary/10 text-secondary"
+                  }`}
+                >
+                  {action.icon}
+                </div>
+                <h3 className="font-semibold text-foreground mb-1 flex items-center gap-2">
+                  {action.title}
+                  <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </h3>
+                <p className="text-sm text-muted-foreground">{action.description}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
 
-      {/* Results Section */}
+      {/* Quick Analysis Form */}
+      <section className="max-w-7xl mx-auto px-4 mb-12">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              Quick Analysis
+            </CardTitle>
+            <CardDescription>
+              Get instant rainwater harvesting recommendations
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <InputForm onSubmit={handleFormSubmit} initialData={getInitialFormData()} />
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Results */}
       {formData && (isLoading || prediction) && (
         <div id="results">
           <Results data={formData} prediction={prediction} isLoading={isLoading} />
         </div>
       )}
 
-      {/* Chatbot */}
+      {/* Floating Chatbot */}
       <Chatbot />
     </div>
   );
 }
 
-// Wrap with ProtectedRoute
-const Index = () => (
-  <ProtectedRoute>
-    <DashboardContent />
-  </ProtectedRoute>
-);
-
-export default Index;
+export default function Dashboard() {
+  return (
+    <ProtectedRoute>
+      <DashboardContent />
+    </ProtectedRoute>
+  );
+}
