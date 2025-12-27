@@ -12,8 +12,11 @@ import {
   History,
   Menu,
   X,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { useState } from "react";
+import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -38,6 +41,11 @@ export function Navbar() {
   const navigate = useNavigate();
   const { user, signOut, isAuthenticated } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
+
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
 
   const handleLogout = async () => {
     await signOut();
@@ -92,8 +100,18 @@ export function Navbar() {
             ))}
           </nav>
 
-          {/* Auth Buttons - Desktop */}
+          {/* Theme Toggle & Auth Buttons - Desktop */}
           <div className="hidden md:flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleTheme}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+              <span className="sr-only">Toggle theme</span>
+            </Button>
             {isAuthenticated ? (
               <Button
                 variant="outline"
@@ -142,6 +160,14 @@ export function Navbar() {
                 </Link>
               ))}
               <div className="border-t border-border mt-2 pt-2">
+                <button
+                  onClick={toggleTheme}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted w-full"
+                >
+                  <Sun className="w-4 h-4 dark:hidden" />
+                  <Moon className="w-4 h-4 hidden dark:block" />
+                  {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                </button>
                 {isAuthenticated ? (
                   <button
                     onClick={handleLogout}
